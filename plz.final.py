@@ -1197,7 +1197,7 @@ with st.container():
         # ✅ 연도 선택 바로 아래, 얇게 표시
         if pd.notna(my_income):
             st.caption(
-                f"💼 {selected_year}년 기준 소득: "
+                f"💼 {selected_year}년 기준 1인·가처분소득: "
                 f"**{int(my_income):,}만원**"
             )
         else:
@@ -1978,9 +1978,9 @@ footer_html = dedent("""
 
       <div style="font-size:13px;color:rgba(15,23,42,.75);line-height:1.45;">
         <b style="color:rgba(15,23,42,.90);">GitHub</b><br/>
-        <a href="https://github.com/example-org/example-repo" target="_blank"
+        <a href="https://github.com/Fintech-Team-12/visualization-project.git" target="_blank"
            style="color:rgba(30,64,175,.95);text-decoration:none;font-weight:700;">
-          https://github.com/example-org/example-repo
+          https://github.com/Fintech-Team-12/visualization-project.git
         </a>
       </div>
     </div>
@@ -1994,4 +1994,4 @@ footer_html = dedent("""
 </div>
 """).strip()
 
-components.html(footer_html, height=235)
+components.html(footer_html, height=260)
