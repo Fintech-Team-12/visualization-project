@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import pydeck as pdk
 import json
@@ -10,7 +11,7 @@ from PIL import Image
 import os 
 import plotly.express as px
 import numpy as np 
-
+from textwrap import dedent
 
 
 # =========================
@@ -79,9 +80,89 @@ def _get_color_by_volume(val: int, max_val: int):
     return [255, g, b, 200]
 
 
+"""이건 geoJsonLayer (아파트 거래 금액 그래프 색상)"""
+def get_fill_color_map(val, min_val, max_val):
+    if val == 0:
+        return [50, 50, 50, 150]   # 회색
+    ratio = (val - min_val) / (max_val - min_val)
+    r = 255
+    g = int(255 * (1 - ratio))
+    b = 0
+    return [r, g, b, 200]         # 노랑 → 빨강
+
+
 # =========================================================
 # 1) 법정동별 거래량 (ColumnLayer)
 # =========================================================
+
+def build_legend_html(vmin: int, vmax: int, title="거래량(건)", ticks=5):
+    gradient_css = "linear-gradient(to top, #ffe08a 0%, #ff9f1c 50%, #ff3b1c 100%)"
+    if vmax <= vmin:
+        tick_vals = [vmin]
+    else:
+        step = (vmax - vmin) / (ticks - 1)
+        tick_vals = [int(vmin + step * i) for i in range(ticks)]
+
+    tick_html = "\n".join(
+        f"""
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="width:8px; height:1px; background:#cbd5e1;"></div>
+          <div style="font-size:12px; color:#e2e8f0;">{t}</div>
+        </div>
+        """.strip()
+        for t in reversed(tick_vals)
+    )
+
+    return dedent(f"""
+    <div class="legend">
+      <div style="font-size:14px; font-weight:700; color:#e2e8f0; margin-bottom:8px;">{title}</div>
+      <div style="display:flex; gap:10px; align-items:stretch;">
+        <div style="width:16px; border-radius:10px; background:{gradient_css};
+                    border:1px solid rgba(255,255,255,0.12);"></div>
+        <div style="display:flex; flex-direction:column; justify-content:space-between;">
+          {tick_html}
+        </div>
+      </div>
+    </div>
+    """).strip()
+
+def render_deck_with_legend(deck, legend_html: str, height=700):
+    deck_html = deck.to_html(as_string=True)  # pydeck HTML(완전한 문서) 생성
+
+    inject = dedent(f"""
+    <style>
+      html, body {{
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+      }}
+      /* deck 캔버스 위에 얹히는 오버레이 */
+      .legend {{
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        z-index: 9999;
+
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: rgba(15, 23, 42, 0.70);
+        backdrop-filter: blur(6px);
+        box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+        border: 1px solid rgba(255,255,255,0.10);
+      }}
+    </style>
+
+    {legend_html}
+    """)
+    # deck HTML의 </body> 바로 앞에 legend를 주입 (같은 문서/같은 레이어에서 렌더링)
+    deck_html = deck_html.replace("</body>", inject + "\n</body>")
+
+    components.html(deck_html, height=height, scrolling=False)
+
+
+
+
 # =========================================================
 # ⚙️ 지도 시각화 설정 (본문 상단에 배치)
 # =========================================================
@@ -193,18 +274,85 @@ try:
         map_style=pdk.map_styles.DARK
     )
 
-    st.pydeck_chart(r_dong, width="stretch", height=700)
+    # st.pydeck_chart(r_dong, width="stretch", height=700)
 
+    # 컬러바 오버레이 추가
+    vmin = int(df_dong["volume"].min()) if not df_dong.empty else 0
+    vmax = int(df_dong["volume"].max()) if not df_dong.empty else 0
+
+    legend_html = build_legend_html(vmin, vmax, title="거래량(건)")
+    render_deck_with_legend(r_dong, legend_html, height=700) 
 
 except Exception as e:
     st.error("❌ 법정동 거래량 지도 로딩 실패")
     st.exception(e)
 
 
+
+
+
+
 # =========================================================
 # 2) 광역자치단체 트렌드 (GeoJsonLayer)
 #   - 'all' 파일 없이 자동 생성(2010/2015/2020/2025 평균)
 # =========================================================
+
+def build_geojson_legend_html(
+    min_val: int,
+    max_val: int,
+    title: str,
+    unit: str = "만원",
+    ticks: int = 5
+):
+    gradient_css = "linear-gradient(to top, #ffeb3b 0%, #ff9800 50%, #f44336 100%)"
+
+    if max_val <= min_val:
+        tick_vals = [min_val]
+    else:
+        step = (max_val - min_val) / (ticks - 1)
+        tick_vals = [int(min_val + step * i) for i in range(ticks)]
+
+    tick_html = "\n".join(
+        f"""
+        <div style="display:flex; align-items:center; gap:6px;">
+            <div style="width:8px; height:1px; background:#cbd5e1;"></div>
+            <div style="font-size:11px; color:#e5e7eb;">{v}</div>
+        </div>
+        """.strip()
+        for v in reversed(tick_vals)
+    )
+
+    return dedent(f"""
+    <div class="legend">
+        <div style="font-size:14px; font-weight:700; color:#f9fafb; margin-bottom:6px;">
+            {title}
+        </div>
+        <div style="font-size:11px; color:#9ca3af; margin-bottom:8px;">
+            (단위: {unit}, 4개년 평균)
+        </div>
+
+        <div style="display:flex; gap:10px; align-items:stretch;">
+            <div style="
+                width:16px;
+                border-radius:10px;
+                background:{gradient_css};
+                border:1px solid rgba(255,255,255,0.15);
+            "></div>
+
+            <div style="display:flex; flex-direction:column; justify-content:space-between;">
+                {tick_html}
+            </div>
+        </div>
+
+        <div style="margin-top:8px; font-size:11px; color:#9ca3af;">
+            <span style="display:inline-block; width:10px; height:10px;
+                         background:#323232; margin-right:6px;"></span>
+            데이터 없음
+        </div>
+    </div>
+    """).strip()
+
+
 st.markdown("---")
 
 def round_coordinates(coords, precision=4):
@@ -386,7 +534,7 @@ def precompute_visual_assets_map(base_dir_str: str):
                 "chart": generate_svg_chart_map(p_prices)
             }
 
-    return geojson_data, assets_cache
+    return geojson_data, assets_cache, stats
 
 
 st.markdown("#### ⚙️ 지도 시각화 설정 ####")
@@ -409,7 +557,7 @@ st.subheader(f"📉 17개 시도 아파트 {chart_title} 트렌드 (2010, 2015, 
 st.markdown("지도 색상은 **4개년 평균(all)** 기준이며, 툴팁은 **연도별 변화**를 보여줍니다.")
 
 try:
-    geojson_data, assets_cache = precompute_visual_assets_map(str(BASE_DIR))
+    geojson_data, assets_cache, stats = precompute_visual_assets_map(str(BASE_DIR))
 
     if geojson_data and assets_cache:
         for feature in geojson_data["features"]:
@@ -467,7 +615,14 @@ try:
             map_style=pdk.map_styles.DARK
         )
 
-        st.pydeck_chart(r, width="stretch", height=700)
+        min_val, max_val = stats[target_prefix]
+        legend_html = build_geojson_legend_html(
+            min_val=min_val,
+            max_val=max_val,
+            title=chart_title,
+            unit="만원"
+        )
+        render_deck_with_legend(r, legend_html, height=700)
 
     else:
         st.error("지도 데이터를 불러오지 못했습니다. (geojson 또는 자산 캐시가 비어 있음)")
