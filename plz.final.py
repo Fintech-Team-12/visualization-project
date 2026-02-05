@@ -1197,7 +1197,7 @@ with st.container():
         # ✅ 연도 선택 바로 아래, 얇게 표시
         if pd.notna(my_income):
             st.caption(
-                f"💼 {selected_year}년 기준 소득 "
+                f"💼 {selected_year}년 기준 소득: "
                 f"**{int(my_income):,}만원**"
             )
         else:
@@ -1926,3 +1926,72 @@ else:
 st.dataframe(out.set_index("Year"), use_container_width=True)
 
 st.markdown('---')
+st.markdown('---')
+
+
+
+
+footer_html = dedent("""
+<div style="margin-top:14px;padding:16px 18px;border-radius:16px;
+            background:rgba(15,23,42,.04);border:1px solid rgba(15,23,42,.10);">
+
+  <div style="font-size:15px;font-weight:800;color:rgba(15,23,42,.85);margin-bottom:10px;">
+    📌 데이터 출처 · 프로젝트 정보
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 24px;">
+
+    <!-- LEFT : 데이터 -->
+    <div>
+      <div style="font-size:13px;color:rgba(15,23,42,.75);line-height:1.45;margin-bottom:8px;">
+        <b style="color:rgba(15,23,42,.90);">개인소득</b><br/>
+        KOSIS (가구당 월 처분가능소득)
+      </div>
+
+      <div style="font-size:13px;color:rgba(15,23,42,.75);line-height:1.45;margin-bottom:8px;">
+        <b style="color:rgba(15,23,42,.90);">아파트 매매</b><br/>
+        국토교통부 아파트 실거래가 공개시스템
+      </div>
+
+      <div style="font-size:13px;color:rgba(15,23,42,.75);line-height:1.45;">
+        <b style="color:rgba(15,23,42,.90);">행정구역 공간정보</b><br/>
+        대한민국 행정구역 공간정보 파일 제공<br/>
+        <a href="https://github.com/cubensys/Korea_District" target="_blank"
+           style="color:rgba(30,64,175,.95);text-decoration:none;font-weight:700;">
+          https://github.com/cubensys/Korea_District
+        </a>
+      </div>
+    </div>
+
+    <!-- RIGHT : 팀 / GitHub -->
+    <div>
+      <div style="font-size:13px;color:rgba(15,23,42,.75);line-height:1.45;margin-bottom:10px;">
+        <b style="color:rgba(15,23,42,.90);">팀</b><br/>
+        <span style="display:inline-block;margin-top:4px;padding:5px 12px;
+                     border-radius:999px;font-size:12px;font-weight:700;
+                     background:rgba(59,130,246,.10);
+                     border:1px solid rgba(59,130,246,.25);
+                     color:rgba(30,64,175,.95);">
+          서울대학교 빅데이터 AI 핀테크 고급 전문가 과정 12기 1조
+        </span>
+      </div>
+
+      <div style="font-size:13px;color:rgba(15,23,42,.75);line-height:1.45;">
+        <b style="color:rgba(15,23,42,.90);">GitHub</b><br/>
+        <a href="https://github.com/example-org/example-repo" target="_blank"
+           style="color:rgba(30,64,175,.95);text-decoration:none;font-weight:700;">
+          https://github.com/example-org/example-repo
+        </a>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="margin-top:12px;font-size:12px;color:rgba(15,23,42,.55);">
+    ※ 데이터는 원천 제공처의 공개 자료를 기반으로 가공·집계되었으며,
+    분석/시뮬레이션 결과는 참고용입니다.
+  </div>
+</div>
+""").strip()
+
+components.html(footer_html, height=235)
