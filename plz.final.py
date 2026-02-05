@@ -80,7 +80,7 @@ def _get_color_by_volume(val: int, max_val: int):
     return [255, g, b, 200]
 
 
-"""이건 geoJsonLayer (아파트 거래 금액 그래프 색상)"""
+#이건 geoJsonLayer (아파트 거래 금액 그래프 색상)
 def get_fill_color_map(val, min_val, max_val):
     if val == 0:
         return [50, 50, 50, 150]   # 회색
@@ -1162,13 +1162,24 @@ raw_data_sim, error_message_sim = load_and_merge_data_simulator(str(BASE_DIR))
 # --------------------------------------------------------------------------
 # 2) UI (시뮬레이션 설정 + 기준연도 통합)
 # --------------------------------------------------------------------------
-with st.container():
-    st.subheader("⚙️ 시뮬레이션 설정")
 
+with st.container(): 
+    st.subheader("⚙️ 시뮬레이션 설정") 
     col0, col1, col2, col3 = st.columns(4)
 
+    # with col0:
+    #     available_years = sorted(raw_data_sim["year"].unique())
+    #     default_idx = len(available_years) - 1
+
+    #     selected_year = st.selectbox(
+    #         "🗓️ 데이터 기준 연도",
+    #         available_years,
+    #         index=default_idx,
+    #         help="이 연도의 소득·아파트 데이터를 기준으로 시뮬레이션합니다.",
+    #         key="sim_selected_year"
+    #     )
     with col0:
-        available_years = sorted(raw_data_sim["year"].unique())
+        available_years = sorted(raw_data_sim["year"].dropna().unique())
         default_idx = len(available_years) - 1
 
         selected_year = st.selectbox(
@@ -1179,6 +1190,19 @@ with st.container():
             key="sim_selected_year"
         )
 
+        # ✅ 연도 기준 소득 계산
+        subset_for_year = raw_data_sim[raw_data_sim["year"] == selected_year]
+        my_income = subset_for_year["annual_wage_manwon"].dropna().mean()
+
+        # ✅ 연도 선택 바로 아래, 얇게 표시
+        if pd.notna(my_income):
+            st.caption(
+                f"💼 {selected_year}년 기준 소득 "
+                f"**{int(my_income):,}만원**"
+            )
+        else:
+            st.caption(f"💼 {selected_year}년 기준 소득 데이터 없음")
+        
     with col1:
         savings_rate = st.slider(
             "💰 저축률 (%)",
