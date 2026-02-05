@@ -21,8 +21,7 @@ st.set_page_config(page_title="내 집 마련의 꿈", layout="wide")
 # =========================
 # 1) 경로/파일 탐색 (mac 한글 NFC/NFD 문제 회피)
 # =========================
-BASE_DIR = Path(__file__).resolve().parent
-# BASE_DIR = BASE_DIR + "/data"
+BASE_DIR = Path(__file__).resolve().parent / "data"
 
 def nfc(s: str) -> str:
     return unicodedata.normalize("NFC", s)
@@ -91,13 +90,6 @@ st.title("💸 내 집 마련의 꿈 💸")
 st.markdown("---")
 
 st.subheader("📊 부동산 거래량 대시보드")
-st.markdown("#### ⚙️ 지도 시각화 설정 ####")
-view_option = st.radio(
-    "보고 싶은 데이터를 선택하세요:",
-    ("거래 금액 중앙값 (단위: 만원)", "평당 가격 중앙값 (단위: 만원)"),
-    horizontal=True,
-    key="map_view_option"
-)
 
 st.subheader("📍 법정동별 상세 거래량")
 st.write("2010년, 2015년, 2020년, 2025년 지역별 아파트 거래량의 합")
@@ -189,7 +181,7 @@ try:
     view_state_dong = pdk.ViewState(
         longitude=127.5,
         latitude=36.0,
-        zoom=6.5,
+        zoom=6.8,
         pitch=45,
         bearing=0
     )
@@ -201,7 +193,8 @@ try:
         map_style=pdk.map_styles.DARK
     )
 
-    st.pydeck_chart(r_dong)
+    st.pydeck_chart(r_dong, width="stretch", height=700)
+
 
 except Exception as e:
     st.error("❌ 법정동 거래량 지도 로딩 실패")
@@ -225,7 +218,7 @@ def round_coordinates(coords, precision=4):
 @st.cache_data(show_spinner=True)
 def load_geo_data_map(base_dir_str: str) -> dict:
     base_dir = Path(base_dir_str)
-    geo_path = base_dir / "대한민국_광역자치단체_경계 (1).geojson"
+    geo_path = base_dir / "대한민국_광역자치단체_경계.geojson"
     if not geo_path.exists():
         raise FileNotFoundError(f"'{geo_path.name}' 파일이 없습니다. 위치: {base_dir}")
 
@@ -396,12 +389,21 @@ def precompute_visual_assets_map(base_dir_str: str):
     return geojson_data, assets_cache
 
 
+st.markdown("#### ⚙️ 지도 시각화 설정 ####")
+view_option = st.radio(
+    "보고 싶은 데이터를 선택하세요:",
+    ("거래 금액 중앙값 (단위: 만원)", "평당 가격 중앙값 (단위: 만원)"),
+    horizontal=True,
+    key="map_view_option"
+)
+
 if "거래 금액 중앙값" in view_option:
     target_prefix = "median_price"
     chart_title = "거래 금액 중앙값"
 else:
     target_prefix = "pyeong_price"
     chart_title = "평당 가격 중앙값"
+
 
 st.subheader(f"📉 17개 시도 아파트 {chart_title} 트렌드 (2010, 2015, 2020, 2025)")
 st.markdown("지도 색상은 **4개년 평균(all)** 기준이며, 툴팁은 **연도별 변화**를 보여줍니다.")
@@ -1381,6 +1383,7 @@ jump_pause_frames = 1
 shake_offsets = [0.35, -0.2, 0.0]
 
 X_MIN, X_MAX = 2010, 2075
+PERSON_X_OFFSET = 0.9
 
 Q_X = 0.92
 Q_DY = +0.5
@@ -1512,7 +1515,7 @@ for s in scenarios:
     y = lane_y[s]
     traces.append(
         go.Scatter(
-            x=[init_person_x], y=[y],
+            x=[init_person_x + PERSON_X_OFFSET], y=[y],
             mode="text",
             text=[PERSON_EMOJI[s]],
             textfont=dict(size=34),
@@ -1541,7 +1544,7 @@ def add_frame(person_x: float, house_x_map: dict, label_year: int):
     for _ in scenarios:
         updates.append(dict(x=[X_MIN, person_x]))
     for _ in scenarios:
-        updates.append(dict(x=[person_x]))
+        updates.append(dict(x=[person_x + PERSON_X_OFFSET]))
     for s in scenarios:
         updates.append(dict(x=[house_x_map[s]]))
 
@@ -1734,7 +1737,13 @@ if show_raw:
     })
 else:
     out = df[["Year", "Income_Index", "Apartment_Index", "Purchasable_Pyeong", "Months_for_1Pyeong"]].copy()
+    out = out.rename(columns={
+        "Income_Index": "소득지수(2010=100)",
+        "Apartment_Index": "아파트지수(2010=100)",
+        "Purchasable_Pyeong": "구매가능평수(월소득/평당)",
+        "Months_for_1Pyeong": "1평구매_개월수(평당/월소득)",
+    })
 
 st.dataframe(out.set_index("Year"), use_container_width=True)
 
-
+st.markdown('---')
